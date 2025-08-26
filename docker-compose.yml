@@ -32,5 +32,31 @@ services:
       APP_ENV: local
       APP_DEBUG: "true"
 
+  web:
+    build:
+      context: ./frontend
+      args:
+        - VITE_API_BASE=/api       # build-time value for Vite
+    depends_on:
+      - api
+    ports:
+      - "5173:80"  
+
+  scheduler:
+    build: ./backend
+    working_dir: /app
+    command: php artisan schedule:work
+    depends_on:
+      db:
+        condition: service_started
+      api:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+
+
+
 volumes:
   db_data:
+
+  

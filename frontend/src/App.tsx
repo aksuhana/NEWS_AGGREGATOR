@@ -1,12 +1,14 @@
 import { useEffect } from "react";
-import { Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
+import type { ReactElement } from "react";
+import { Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "./store/auth";
-import { setToken } from "./api";
+import { setToken, api } from "./api";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Feed from "./pages/Feed";
+import "./styles.css";
 
-function RequireAuth({ children }: { children: JSX.Element }) {
+function RequireAuth({ children }: { children: ReactElement }) {
   const token = useAuth((s) => s.token);
   const loc = useLocation();
   if (!token) return <Navigate to="/login" state={{ from: loc }} replace />;
@@ -14,19 +16,45 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 }
 
 export default function App() {
-  const set = useAuth((s) => s.set);
+  const { set, token, user, logout } = useAuth();
+  const nav = useNavigate();
+
+  // Restore from localStorage only (no backend call)
   useEffect(() => {
-    const saved = localStorage.getItem("token");
-    if (saved) { set({ token: saved }); setToken(saved); }
+    const savedToken = localStorage.getItem("token");
+    const savedUser  = localStorage.getItem("user");
+    if (savedToken) {
+      set({ token: savedToken });
+      setToken(savedToken);
+    }
+    if (savedUser) {
+      try { set({ user: JSON.parse(savedUser) }); } catch {}
+    }
   }, [set]);
+
+  async function onLogout() {
+    try { await api.post("/logout"); } catch {}
+    setToken(undefined);
+    logout();
+    nav("/login");
+  }
 
   return (
     <div className="shell">
       <nav className="nav">
         <Link to="/">Home</Link>
         <div className="spacer" />
-        <Link to="/login">Login</Link>
-        <Link to="/register">Register</Link>
+        {!token ? (
+          <>
+            <Link to="/login">Login</Link>
+            <Link to="/register">Register</Link>
+          </>
+        ) : (
+          <>
+            <span style={{ opacity:.8 }}>Hello, {user?.name ?? "User"}</span>
+            <button className="btn secondary" onClick={onLogout}>Logout</button>
+          </>
+        )}
       </nav>
 
       <Routes>

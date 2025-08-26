@@ -1,0 +1,36 @@
+services:
+  db:
+    image: mysql:8.0
+    # If you're on Apple Silicon and see weird CPU errors, uncomment the next line:
+    # platform: linux/amd64
+    command: ["--default-authentication-plugin=mysql_native_password", "--sql-mode="]
+    environment:
+      MYSQL_DATABASE: news
+      MYSQL_USER: news
+      MYSQL_PASSWORD: news
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"         # host:container (use 3307 on host to avoid conflicts)
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+
+volumes:
+  db_data:

@@ -302,4 +302,3 @@ docker compose down -v
 
 ---
 
-That’s it — drop this file at the repo root as `README.md`, put your screenshot at `docs/screenshot.png`, and anyone can run your app in a minute or two.

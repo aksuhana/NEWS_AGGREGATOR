@@ -84,3 +84,5 @@ a:hover{text-decoration:underline}
 }
 .form h2{margin:0 0 8px}
 .form p.sub{margin:0 0 12px; color:var(--muted)}
+.error { color:#ffb4b4; font-size:12px; margin-top:4px }
+.input.error { border-color:#ff6b6b; }

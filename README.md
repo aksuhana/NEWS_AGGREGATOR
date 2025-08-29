@@ -37,16 +37,10 @@ cd news_aggregator
 
 # Backend env
 cp backend/.env.example backend/.env
-# Ensure DB points to the docker service:
-# DB_CONNECTION=mysql
-# DB_HOST=db
-# DB_PORT=3306
-# DB_DATABASE=news
-# DB_USERNAME=news
-# DB_PASSWORD=news
+
 
 # (Optional) Add provider keys later in backend/.env
-# NEWSAPI_KEY=...
+# NEWSAPI_KEY=... This key I have already added in env.example for testing purpose
 # GUARDIAN_KEY=...
 ```
 

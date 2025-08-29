@@ -1,18 +1,14 @@
 services:
   db:
     image: mysql:8.0
-    # If you're on Apple Silicon and see weird CPU errors, uncomment the next line:
-    # platform: linux/amd64
     command: ["--default-authentication-plugin=mysql_native_password", "--sql-mode="]
     environment:
       MYSQL_DATABASE: news
       MYSQL_USER: news
       MYSQL_PASSWORD: news
       MYSQL_ROOT_PASSWORD: root
-    ports:
-      - "3307:3306"         # host:container (use 3307 on host to avoid conflicts)
-    volumes:
-      - db_data:/var/lib/mysql
+    ports: ["3307:3306"]
+    volumes: [db_data:/var/lib/mysql]
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
       interval: 5s
@@ -22,41 +18,55 @@ services:
   api:
     build: ./backend
     depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend:/app
+      db: { condition: service_healthy }
     environment:
-      APP_ENV: local
-      APP_DEBUG: "true"
+      APP_ENV: production
+      APP_DEBUG: "false"
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: news
+      DB_USERNAME: news
+      DB_PASSWORD: news
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+    ports: ["8000:8000"]
+    restart: unless-stopped
 
   web:
     build:
       context: ./frontend
-      args:
-        - VITE_API_BASE=/api       # build-time value for Vite
-    depends_on:
-      - api
-    ports:
-      - "5173:80"  
+      args: [ VITE_API_BASE=/api ]
+    depends_on: [api]
+    ports: ["5173:80"]
+    restart: unless-stopped
 
   scheduler:
     build: ./backend
     working_dir: /app
-    command: php artisan schedule:work
+    command: >
+      sh -lc '
+      [ -f vendor/autoload.php ] || composer install --no-interaction --prefer-dist --no-dev;
+      [ -f .env ] || cp .env.example .env;
+      sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=mysql/" .env || true;
+      sed -i "s/^DB_HOST=.*/DB_HOST=db/"               .env || true;
+      sed -i "s/^DB_PORT=.*/DB_PORT=3306/"             .env || true;
+      sed -i "s/^DB_DATABASE=.*/DB_DATABASE=news/"     .env || true;
+      sed -i "s/^DB_USERNAME=.*/DB_USERNAME=news/"     .env || true;
+      sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=news/"     .env || true;
+      sed -i "s/^SESSION_DRIVER=.*/SESSION_DRIVER=file/" .env || true;
+      sed -i "s/^CACHE_STORE=.*/CACHE_STORE=file/"       .env || true;
+      sed -i "s/^QUEUE_CONNECTION=.*/QUEUE_CONNECTION=sync/" .env || true;
+      grep -qE "^APP_KEY=base64:" .env || php artisan key:generate --force;
+      until nc -z db 3306; do echo "Waiting for DB..."; sleep 2; done;
+      php artisan optimize:clear;
+      php artisan schedule:work --verbose
+      '
     depends_on:
-      db:
-        condition: service_started
-      api:
-        condition: service_started
-    volumes:
-      - ./backend:/app
-
-
+      db:  { condition: service_started }
+      api: { condition: service_started }
+    restart: unless-stopped
 
 volumes:
   db_data:
-
-  
